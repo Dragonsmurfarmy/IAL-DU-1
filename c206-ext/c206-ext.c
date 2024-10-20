@@ -5,14 +5,9 @@
  */
 
 #include "c206-ext.h"
-void CreateDLLElementList(DLLElementPtr list, DLList* PacketList);
-void InsertPacket(DLList* list, long packet);
-void InsertPriority(QosPacketListPtr list, PacketPtr packet);
-void createDLList(DLList* list);
 
 bool error_flag;
 bool solved;
-
 
 /**
  * Tato metoda simuluje příjem síťových paketů s určenou úrovní priority.
@@ -32,7 +27,7 @@ bool solved;
  * @param packetLists Ukazatel na inicializovanou strukturu dvousměrně vázaného seznamu
  * @param packet Ukazatel na strukturu přijatého paketu
  */
-void receive_packet( DLList *packetLists, PacketPtr packet ){
+void receive_packet( DLList *packetLists, PacketPtr packet ) {
 	if (packetLists != NULL && packet != NULL) {
 
 		DLList * priorityListPtr = NULL;
@@ -131,7 +126,7 @@ void receive_packet( DLList *packetLists, PacketPtr packet ){
  * @param outputPacketList Ukazatel na seznam paketů k odeslání
  * @param maxPacketCount Maximální počet paketů k odeslání
  */
-void send_packets(DLList *packetLists, DLList *outputPacketList, int maxPacketCount ){
+void send_packets( DLList *packetLists, DLList *outputPacketList, int maxPacketCount ) {
 	int currentPacketCount = 0;
 
 	for (DLL_First(packetLists); DLL_IsActive(packetLists); DLL_Next(packetLists)) {
@@ -156,32 +151,5 @@ void send_packets(DLList *packetLists, DLList *outputPacketList, int maxPacketCo
 			}
 		}
 	}
-	/*
-	int currentPacketCount = 0;
-
-	for (DLL_First(packetListsPtr); DLL_IsActive(packetListsPtr); DLL_Next(packetListsPtr)) {
-		QosPacketList *packetListHeader = (QosPacketList *)packetListsPtr->activeElement->data;
-		DLList *packetListPtr = packetListHeader->list;
-
-		DLL_First(packetListPtr);
-		while (DLL_IsActive(packetListPtr)) {
-			Packet * packetPtr = (Packet *)packetListPtr->activeElement->data;
-
-			DLL_InsertLast(outputPacketList, (long)packetPtr);
-
-			DLL_Next(packetListPtr);
-			if (DLL_IsActive(packetListPtr)) {
-				DLL_DeleteBefore(packetListPtr);
-			} else {
-				// delete only remaining element
-				DLL_DeleteLast(packetListPtr);
-			}
-			currentPacketCount++;
-
-			if (currentPacketCount >= maxPacketCount) {
-				return;
-			}
-		}
-	}
-	*/
 }
+
