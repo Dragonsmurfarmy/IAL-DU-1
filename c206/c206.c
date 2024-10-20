@@ -155,7 +155,6 @@ void DLL_InsertLast( DLList *list, long data ) {
 		return;
 	}
 	
-	
 	NewNode->data = data;
 	//case when list was empty
 	if(list->currentLength == 0){

@@ -30,83 +30,77 @@ bool solved;
 void receive_packet( DLList *packetLists, PacketPtr packet ) {
 	if (packetLists != NULL && packet != NULL) {
 
-		DLList * priorityListPtr = NULL;
+		DLList * prioListPtr = NULL;
 
-		// create new priority list or 
+		//create new priority list 
 		DLL_First(packetLists);
 
-			// insert new packetListHeader in order (list remains sorted)
+			//insert new packetListH in order so list remains sorted
 		if (DLL_IsActive(packetLists) == false) {
-			QosPacketListPtr newPacketListHeaderPtr = (QosPacketListPtr)malloc(sizeof(QosPacketList));
-			DLList *         newPriorityListPtr     = (DLList *)malloc(sizeof(DLList));
+			QosPacketListPtr newPacketListHPtr = (QosPacketListPtr)malloc(sizeof(QosPacketList));
+			DLList *         newPrioListPtr     = (DLList *)malloc(sizeof(DLList));
 			
-			DLL_InsertFirst(packetLists, (long)newPacketListHeaderPtr);
+			DLL_InsertFirst(packetLists, (long)newPacketListHPtr);
 
-			// set packetListHeader parameters
-			newPacketListHeaderPtr->priority = packet->priority;
-			newPacketListHeaderPtr->list = newPriorityListPtr;
+			//set packetListH parameters
+			newPacketListHPtr->priority = packet->priority;
+			newPacketListHPtr->list = newPrioListPtr;
 
-			// initialize and connect 
-			DLL_Init(newPriorityListPtr);
-			priorityListPtr = newPriorityListPtr;
+			//initialize and bind 
+			DLL_Init(newPrioListPtr);
+			prioListPtr = newPrioListPtr;
 		} else {
 			while (DLL_IsActive(packetLists)) {
-				QosPacketListPtr packetListHeaderPtr = (QosPacketListPtr)packetLists->activeElement->data;
+				QosPacketListPtr packetListHPtr = (QosPacketListPtr)packetLists->activeElement->data;
 
-				if (packet->priority == packetListHeaderPtr->priority) {
-					priorityListPtr = packetListHeaderPtr->list;
+				if (packet->priority == packetListHPtr->priority) {
+					prioListPtr = packetListHPtr->list;
 
 					break;
 
-				} else if (packet->priority > packetListHeaderPtr->priority) {
-					QosPacketListPtr newPacketListHeaderPtr = (QosPacketListPtr)malloc(sizeof(QosPacketList));
-					DLList *         newPriorityListPtr     = (DLList *)malloc(sizeof(DLList));
+				} else if (packet->priority > packetListHPtr->priority) {
+					QosPacketListPtr newPacketListHPtr = (QosPacketListPtr)malloc(sizeof(QosPacketList));
+					DLList *         newPrioListPtr     = (DLList *)malloc(sizeof(DLList));
 
-					DLL_InsertBefore(packetLists, (long)newPacketListHeaderPtr);
+					DLL_InsertBefore(packetLists, (long)newPacketListHPtr);
 
-					// set packetListHeader parameters
-					newPacketListHeaderPtr->priority = packet->priority;
-					newPacketListHeaderPtr->list = newPriorityListPtr;
+					//set packetListH parameters
+					newPacketListHPtr->priority = packet->priority;
+					newPacketListHPtr->list = newPrioListPtr;
 
-					// initialize and connect
-					DLL_Init(newPriorityListPtr);
-					priorityListPtr = newPriorityListPtr;
+					//initialize and connect
+					DLL_Init(newPrioListPtr);
+					prioListPtr = newPrioListPtr;
 
 					break;
 				}
 
 				DLL_Next(packetLists);
 				if (DLL_IsActive(packetLists) == false) {
-					QosPacketListPtr newPacketListHeaderPtr = (QosPacketListPtr)malloc(sizeof(QosPacketList));
-					DLList *         newPriorityListPtr     = (DLList *)malloc(sizeof(DLList));
+					QosPacketListPtr newPacketListHPtr = (QosPacketListPtr)malloc(sizeof(QosPacketList));
+					DLList *         newPrioListPtr     = (DLList *)malloc(sizeof(DLList));
 
-					DLL_InsertLast(packetLists, (long)newPacketListHeaderPtr);
+					DLL_InsertLast(packetLists, (long)newPacketListHPtr);
 
-					// set packetListHeader parameters
-					newPacketListHeaderPtr->priority = packet->priority;
-					newPacketListHeaderPtr->list = priorityListPtr;
+					//set packetListH parameters
+					newPacketListHPtr->priority = packet->priority;
+					newPacketListHPtr->list = prioListPtr;
 
-					// initialize and connect
-					DLL_Init(newPriorityListPtr);
-					priorityListPtr = newPriorityListPtr;
+					//initialize and connect
+					DLL_Init(newPrioListPtr);
+					prioListPtr = newPrioListPtr;
 				}
 			}
 		}
 
-		// add packet to this priority queue
-		if (priorityListPtr != NULL) {
-			if (priorityListPtr->currentLength >= MAX_PACKET_COUNT) {
-				for (DLL_First(priorityListPtr); DLL_IsActive(priorityListPtr); DLL_Next(priorityListPtr)) {
-					DLL_DeleteAfter(priorityListPtr);
+		//add packet to queue
+		if (prioListPtr != NULL) {
+			if (prioListPtr->currentLength >= MAX_PACKET_COUNT) {
+				for (DLL_First(prioListPtr); DLL_IsActive(prioListPtr); DLL_Next(prioListPtr)) {
+					DLL_DeleteAfter(prioListPtr);
 				}
 			}
-
-			// PacketPtr newPacketPtr = (PacketPtr)malloc(sizeof(Packet));
-
-			DLL_InsertLast(priorityListPtr, (long)packet);
-
-			// newPacketPtr->id       = packet->id;
-			// newPacketPtr->priority = packet->priority;
+			DLL_InsertLast(prioListPtr, (long)packet);
 		}
 	}
 }
@@ -127,29 +121,31 @@ void receive_packet( DLList *packetLists, PacketPtr packet ) {
  * @param maxPacketCount Maximální počet paketů k odeslání
  */
 void send_packets( DLList *packetLists, DLList *outputPacketList, int maxPacketCount ) {
-	int currentPacketCount = 0;
+	int packetsInList = 0;
+	DLL_First(packetLists);
+	while(DLL_IsActive(packetLists)){
+		QosPacketListPtr packetListH = (QosPacketListPtr)packetLists->activeElement->data;
+		DLList *         prioList     = packetListH->list;
 
-	for (DLL_First(packetLists); DLL_IsActive(packetLists); DLL_Next(packetLists)) {
-		QosPacketListPtr packetListHeader = (QosPacketListPtr)packetLists->activeElement->data;
-		DLList *         priorityList     = packetListHeader->list;
-
-		for (DLL_First(priorityList); DLL_IsActive(priorityList); ) {
-			PacketPtr packetElementPtr = (PacketPtr)priorityList->activeElement->data;
+		DLL_First(prioList);
+		while(DLL_IsActive(prioList)){
+			PacketPtr packetElementPtr = (PacketPtr)prioList->activeElement->data;
 
 			DLL_InsertLast(outputPacketList, (long)packetElementPtr);
-			DLL_Next(priorityList);
-			if (DLL_IsActive(priorityList)) {
-				DLL_DeleteBefore(priorityList);
+			DLL_Next(prioList);
+			if (DLL_IsActive(prioList)) {
+				DLL_DeleteBefore(prioList);
 			} else {
-				// delete only remaining element
-				DLL_DeleteLast(priorityList);
+				//last remaining element is deleted
+				DLL_DeleteLast(prioList);
 			}
-			currentPacketCount++;
+			packetsInList++;
 
-			if (currentPacketCount >= maxPacketCount) {
+			if (packetsInList >= maxPacketCount) {
 				return;
 			}
 		}
+		DLL_Next(packetLists);
 	}
 }
 
