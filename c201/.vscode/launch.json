@@ -1,0 +1,17 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug",
+            "program": "/Users/tomaskriz/Desktop/Škola/IAL/Zadání 1. domácí úlohy-20240930/c201/c201-test",
+            "args": [],
+            "cwd": "/Users/tomaskriz/Desktop/Škola/IAL/Zadání 1. domácí úlohy-20240930/c201",
+            "stopOnEntry": true
+        }
+    ]
+}
