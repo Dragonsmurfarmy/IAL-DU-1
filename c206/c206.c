@@ -257,6 +257,9 @@ void DLL_DeleteFirst( DLList *list ) {
 	}
 	else{
 		struct DLLElement *ToDelete = list->firstElement;
+		if (list->activeElement == list->firstElement) {
+			list->activeElement = NULL;
+		}
 		//case list has only one element
 		if(list->firstElement == list->lastElement){
 			list->firstElement = NULL;
@@ -294,13 +297,17 @@ void DLL_DeleteLast( DLList *list ) {
 	}
 	else{ 
 			struct DLLElement *ToDelete = list->lastElement;
+			if (list->activeElement == list->lastElement) {
+				list->activeElement = NULL;
+			}
+
 			//case list has only one element
 			if(list->lastElement == list->firstElement){
 				list->lastElement = NULL;
 				list->activeElement = NULL;
 				list->firstElement = NULL;
 			}
-		
+
 			/*	standard case, we store node we want to delete in special node, 
 			then we set the follower of the node as the 1st node,
 			then the node can be deleted, without loosing all nodes after the node which will be deleted
