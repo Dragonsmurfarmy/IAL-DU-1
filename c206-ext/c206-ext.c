@@ -33,40 +33,87 @@ bool solved;
  * @param packet Ukazatel na strukturu přijatého paketu
  */
 void receive_packet( DLList *packetLists, PacketPtr packet ){
-	//checking whether there are elements in packetLists
-	if(packetLists == NULL){
-		return;
-	}
-	//checking whether packet priority doesnt already exists, in list, 
-	//if it does, we insert the packet
-	DLLElementPtr current = packetLists->firstElement;
-	while(current != NULL){
-		QosPacketListPtr currList = (QosPacketListPtr)(current->data);
-		if(current->data == packet->priority){
-			DLL_InsertAfter(currList->list,(long)packet->id);
-			return;
+	if (packetLists != NULL && packet != NULL) {
+
+		DLList * priorityListPtr = NULL;
+
+		// create new priority list or 
+		DLL_First(packetLists);
+
+			// insert new packetListHeader in order (list remains sorted)
+		if (DLL_IsActive(packetLists) == false) {
+			QosPacketListPtr newPacketListHeaderPtr = (QosPacketListPtr)malloc(sizeof(QosPacketList));
+			DLList *         newPriorityListPtr     = (DLList *)malloc(sizeof(DLList));
+			
+			DLL_InsertFirst(packetLists, (long)newPacketListHeaderPtr);
+
+			// set packetListHeader parameters
+			newPacketListHeaderPtr->priority = packet->priority;
+			newPacketListHeaderPtr->list = newPriorityListPtr;
+
+			// initialize and connect 
+			DLL_Init(newPriorityListPtr);
+			priorityListPtr = newPriorityListPtr;
+		} else {
+			while (DLL_IsActive(packetLists)) {
+				QosPacketListPtr packetListHeaderPtr = (QosPacketListPtr)packetLists->activeElement->data;
+
+				if (packet->priority == packetListHeaderPtr->priority) {
+					priorityListPtr = packetListHeaderPtr->list;
+
+					break;
+
+				} else if (packet->priority > packetListHeaderPtr->priority) {
+					QosPacketListPtr newPacketListHeaderPtr = (QosPacketListPtr)malloc(sizeof(QosPacketList));
+					DLList *         newPriorityListPtr     = (DLList *)malloc(sizeof(DLList));
+
+					DLL_InsertBefore(packetLists, (long)newPacketListHeaderPtr);
+
+					// set packetListHeader parameters
+					newPacketListHeaderPtr->priority = packet->priority;
+					newPacketListHeaderPtr->list = newPriorityListPtr;
+
+					// initialize and connect
+					DLL_Init(newPriorityListPtr);
+					priorityListPtr = newPriorityListPtr;
+
+					break;
+				}
+
+				DLL_Next(packetLists);
+				if (DLL_IsActive(packetLists) == false) {
+					QosPacketListPtr newPacketListHeaderPtr = (QosPacketListPtr)malloc(sizeof(QosPacketList));
+					DLList *         newPriorityListPtr     = (DLList *)malloc(sizeof(DLList));
+
+					DLL_InsertLast(packetLists, (long)newPacketListHeaderPtr);
+
+					// set packetListHeader parameters
+					newPacketListHeaderPtr->priority = packet->priority;
+					newPacketListHeaderPtr->list = priorityListPtr;
+
+					// initialize and connect
+					DLL_Init(newPriorityListPtr);
+					priorityListPtr = newPriorityListPtr;
+				}
+			}
 		}
-		else{
-			current = current->nextElement;
+
+		// add packet to this priority queue
+		if (priorityListPtr != NULL) {
+			if (priorityListPtr->currentLength >= MAX_PACKET_COUNT) {
+				for (DLL_First(priorityListPtr); DLL_IsActive(priorityListPtr); DLL_Next(priorityListPtr)) {
+					DLL_DeleteAfter(priorityListPtr);
+				}
+			}
+
+			// PacketPtr newPacketPtr = (PacketPtr)malloc(sizeof(Packet));
+
+			DLL_InsertLast(priorityListPtr, (long)packet);
+
+			// newPacketPtr->id       = packet->id;
+			// newPacketPtr->priority = packet->priority;
 		}
 	}
-	//no matching list exists, so we create a new one
-	CreateDLLElementList(current,packetLists);
-	
-	//if packetLists is empty, we insert NewList as a new element, otherwise we insert it as last element
-	
-	DLList* dataList = NULL;
-	createDLList(dataList);
-	current->data = (long)dataList;
-	((QosPacketListPtr)current->data)->list = dataList;
-
-	//inserting packet into the NewList and setting the data back to the original long value
-	InsertPacket(dataList,packet->id);
-	InsertPriority(((QosPacketListPtr)current->data),packet);
-	current->data=(long)dataList;
-
-	return;
-
 }
 
 /**
@@ -84,62 +131,57 @@ void receive_packet( DLList *packetLists, PacketPtr packet ){
  * @param outputPacketList Ukazatel na seznam paketů k odeslání
  * @param maxPacketCount Maximální počet paketů k odeslání
  */
-void send_packets( DLList *packetLists, DLList *outputPacketList, int maxPacketCount ){
-	solved = false; /* V případě řešení, smažte tento řádek! */
+void send_packets(DLList *packetLists, DLList *outputPacketList, int maxPacketCount ){
+	int currentPacketCount = 0;
+
+	for (DLL_First(packetLists); DLL_IsActive(packetLists); DLL_Next(packetLists)) {
+		QosPacketListPtr packetListHeader = (QosPacketListPtr)packetLists->activeElement->data;
+		DLList *         priorityList     = packetListHeader->list;
+
+		for (DLL_First(priorityList); DLL_IsActive(priorityList); ) {
+			PacketPtr packetElementPtr = (PacketPtr)priorityList->activeElement->data;
+
+			DLL_InsertLast(outputPacketList, (long)packetElementPtr);
+			DLL_Next(priorityList);
+			if (DLL_IsActive(priorityList)) {
+				DLL_DeleteBefore(priorityList);
+			} else {
+				// delete only remaining element
+				DLL_DeleteLast(priorityList);
+			}
+			currentPacketCount++;
+
+			if (currentPacketCount >= maxPacketCount) {
+				return;
+			}
+		}
+	}
+	/*
+	int currentPacketCount = 0;
+
+	for (DLL_First(packetListsPtr); DLL_IsActive(packetListsPtr); DLL_Next(packetListsPtr)) {
+		QosPacketList *packetListHeader = (QosPacketList *)packetListsPtr->activeElement->data;
+		DLList *packetListPtr = packetListHeader->list;
+
+		DLL_First(packetListPtr);
+		while (DLL_IsActive(packetListPtr)) {
+			Packet * packetPtr = (Packet *)packetListPtr->activeElement->data;
+
+			DLL_InsertLast(outputPacketList, (long)packetPtr);
+
+			DLL_Next(packetListPtr);
+			if (DLL_IsActive(packetListPtr)) {
+				DLL_DeleteBefore(packetListPtr);
+			} else {
+				// delete only remaining element
+				DLL_DeleteLast(packetListPtr);
+			}
+			currentPacketCount++;
+
+			if (currentPacketCount >= maxPacketCount) {
+				return;
+			}
+		}
+	}
+	*/
 }
-
-void CreateDLLElementList(DLLElementPtr list, DLList* packetLists){
-		//malloc check
-	list = malloc(sizeof(DLList));
-	if(list == NULL){
-		return;
-	}
-	//init list
-	list->data = 0;
-	list->nextElement = NULL;
-	list->previousElement = NULL;
-
-	//case list of lists is empty
-	if(packetLists->firstElement == NULL){
-		packetLists->activeElement = list;
-		packetLists->firstElement = list;
-		packetLists->lastElement = list;
-	}
-	//case list of lists is not empty
-	else{
-		packetLists->lastElement->nextElement = list;
-		list->previousElement = packetLists->lastElement;
-		packetLists->lastElement = list;
-	}
-	list->data = (long)&packetLists->lastElement;
-}
-
-
-void InsertPacket(DLList* list, long packet){
-	if(list->firstElement == NULL){
-		DLL_InsertFirst(list, packet);
-	}
-	else if(!DLL_IsActive(list)){
-		list->activeElement = list->lastElement;
-	}
-	DLL_InsertAfter(list, packet);
-	return;
-}
-
-void InsertPriority(QosPacketListPtr list, PacketPtr packet){
-	list->priority = packet->priority;
-}
-
-void createDLList(DLList* list){
-	//malloc check
-	list = malloc(sizeof(DLList));
-	if(list == NULL){
-		return;
-	}
-	//initialization
-	list->currentLength = 0;
-	list->activeElement = NULL;
-	list->firstElement = NULL;
-	list->lastElement = NULL;
-}
-
